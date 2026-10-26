@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EN EL NIDO_250724</title>
+    <style>
+        :root {
+            --bg-void: #020708;
+            --phosphor-green: #39ff14;
+            --phosphor-dim: rgba(57, 255, 20, 0.45);
+            --phosphor-faint: rgba(57, 255, 20, 0.12);
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-void);
+            color: var(--phosphor-green);
+            font-family: var(--font-mono);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #viewport {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at 50% 50%, #05161a 0%, #010608 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 2.5rem 3.5rem;
+        }
+
+        canvas#matrix {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+
+        .crt-scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.35) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.02),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.02)
+            );
+            background-size: 100% 3px, 6px 100%;
+            pointer-events: none;
+        }
+
+        .crt-vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+            box-shadow: inset 0 0 120px rgba(0,0,0,0.9);
+            pointer-events: none;
+        }
+
+        #flash-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            opacity: 0;
+            z-index: 10;
+            pointer-events: none;
+            transition: opacity 0.08s ease-out;
+        }
+
+        header.telemetry {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.72rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--phosphor-dim);
+            border-bottom: 1px solid var(--phosphor-faint);
+            padding-bottom: 0.6rem;
+        }
+
+        .telemetry .dot {
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            background-color: var(--phosphor-green);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--phosphor-green);
+            margin-right: 0.5rem;
+            animation: pulse-dot 2.4s infinite ease-in-out;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 0.3; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px var(--phosphor-green); }
+        }
+
+        #state-pill {
+            font-size: 0.7rem;
+            padding: 2px 10px;
+            border: 1px solid var(--phosphor-faint);
+            border-radius: 2px;
+            background: rgba(4, 18, 20, 0.65);
+        }
+
+        #stage {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0 auto;
+            min-height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        #active-window {
+            font-size: 2.2rem;
+            font-weight: 300;
+            line-height: 1.45;
+            letter-spacing: 0.015em;
+            color: rgba(141, 164, 152, 0.55);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem 0.9rem;
+        }
+
+        .word-token {
+            display: inline-block;
+            transition: all 0.15s ease-out;
+        }
+
+        .word-token.current {
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 0 12px #ffffff, 0 0 24px var(--phosphor-green);
+            transform: scale(1.06);
+        }
+
+        footer.cadence-bar {
+            position: relative;
+            z-index: 5;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+            color: var(--phosphor-dim);
+        }
+
+        .cadence-track {
+            position: relative;
+            width: 100%;
+            height: 4px;
+            background: rgba(57, 255, 20, 0.12);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .cadence-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--phosphor-green);
+            box-shadow: 0 0 10px var(--phosphor-green);
+            transition: width 0.1s linear, background-color 0.3s ease;
+        }
+
+        .cadence-labels {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #start-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(2, 7, 8, 0.95);
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.6rem;
+            cursor: pointer;
+            transition: opacity 0.6s ease;
+        }
+
+        #start-overlay h1 {
+            font-size: 1.45rem;
+            letter-spacing: 0.25em;
+            color: var(--phosphor-green);
+            text-shadow: 0 0 14px var(--phosphor-green);
+            font-weight: 400;
+        }
+
+        #start-overlay p {
+            font-size: 0.9rem;
+            color: #8da498;
+            max-width: 580px;
+            line-height: 1.65;
+            text-align: center;
+        }
+
+        #start-overlay .prompt-btn {
+            padding: 0.8rem 2rem;
+            border: 1px solid var(--phosphor-green);
+            color: var(--phosphor-green);
+            background: transparent;
+            font-family: var(--font-mono);
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-size: 0.78rem;
+            box-shadow: 0 0 12px rgba(57, 255, 20, 0.25);
+            transition: all 0.2s ease;
+        }
+
+        #start-overlay:hover .prompt-btn {
+            background: var(--phosphor-green);
+            color: var(--bg-void);
+            box-shadow: 0 0 22px var(--phosphor-green);
+        }
+
+        /* ==========================================================
+           INTERFAZ DE DEBUG
+           ========================================================== */
+        #debug-panel {
+            position: fixed;
+            bottom: 3.8rem;
+            left: 1.5rem;
+            width: 400px;
+            max-height: 78vh;
+            background: rgba(3, 15, 18, 0.95);
+            border: 1px solid var(--phosphor-dim);
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(57, 255, 20, 0.08);
+            border-radius: 3px;
+            z-index: 100;
+            font-size: 0.67rem;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(8px);
+            transition: transform 0.25s ease, opacity 0.25s ease;
+        }
+
+        #debug-panel.collapsed {
+            transform: translateY(calc(100% - 28px));
+            opacity: 0.75;
+        }
+
+        #debug-header {
+            padding: 6px 10px;
+            background: rgba(57, 255, 20, 0.12);
+            border-bottom: 1px solid var(--phosphor-dim);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        #debug-body {
+            padding: 10px 12px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            scrollbar-width: thin;
+            scrollbar-color: var(--phosphor-dim) transparent;
+        }
+
+        .debug-group {
+            border-bottom: 1px solid rgba(57, 255, 20, 0.1);
+            padding-bottom: 6px;
+        }
+
+        .debug-group-title {
+            color: #6efac0;
+            font-size: 0.62rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .debug-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3px;
+        }
+
+        .debug-row label {
+            flex: 1.2;
+            color: #a0b6aa;
+        }
+
+        .debug-row input[type="range"] {
+            flex: 1.1;
+            height: 3px;
+            background: rgba(57, 255, 20, 0.2);
+            accent-color: var(--phosphor-green);
+            cursor: pointer;
+        }
+
+        .debug-row .val {
+            width: 48px;
+            text-align: right;
+            color: #ffffff;
+            font-family: var(--font-mono);
+        }
+
+        #btn-copy-config {
+            margin-top: 6px;
+            padding: 6px 8px;
+            background: rgba(57, 255, 20, 0.15);
+            border: 1px solid var(--phosphor-green);
+            color: var(--phosphor-green);
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        #btn-copy-config:hover {
+            background: var(--phosphor-green);
+            color: #020708;
+            box-shadow: 0 0 10px var(--phosphor-green);
+        }
+    </style>
+</head>
+<body>
+
+<div id="viewport">
+    <canvas id="matrix"></canvas>
+    <div class="crt-scanlines"></div>
+    <div class="crt-vignette"></div>
+    <div id="flash-overlay"></div>
+
+    <header class="telemetry">
+        <div>
+            <span class="dot"></span>
+            <span>EN EL NIDO_250724</span>
+        </div>
+        <div id="state-pill">REPOSO</div>
+    </header>
+
+    <main id="stage">
+        <div id="active-window"></div>
+    </main>
+
+    <footer class="cadence-bar">
+        <div class="cadence-labels">
+            <span>CADENCIA</span>
+            <span id="cadence-val">0.0 Hz</span>
+        </div>
+        <div class="cadence-track">
+            <div class="cadence-fill" id="cadence-fill"></div>
+        </div>
+    </footer>
+
+    <!-- ==================================================================
+         PANEL DE DEBUG CALIBRABLE (COMENTADO PARA PRUEBAS CON USUARIOS)
+         Para reactivar la calibración, descomenta este bloque y el cierre al final.
+         ==================================================================
+    <div id="debug-panel">
+        <div id="debug-header">
+            <span>[ CALIBRACIÓN // EN EL NIDO ]</span>
+            <span id="debug-toggle-btn">▼</span>
+        </div>
+        <div id="debug-body">
+            <!-- VOZ Y SINCRONIZACIÓN -->
+            <div class="debug-group">
+                <div class="debug-group-title">VOZ & SINCRONIZACIÓN</div>
+                <div class="debug-row">
+                    <label>Vol Master Voz:</label>
+                    <input type="range" id="cfg-volVoiceMaster" min="0.1" max="1.0" step="0.05" value="1.0">
+                    <span class="val" id="val-volVoiceMaster">1.0</span>
+                </div>
+                <div class="debug-row">
+                    <label>Fade In Voz (s):</label>
+                    <input type="range" id="cfg-fadeIn" min="0.01" max="0.4" step="0.01" value="0.02">
+                    <span class="val" id="val-fadeIn">0.02s</span>
+                </div>
+                <div class="debug-row">
+                    <label>Inactividad Stop (ms):</label>
+                    <input type="range" id="cfg-inactivityStop" min="100" max="1000" step="20" value="460">
+                    <span class="val" id="val-inactivityStop">460ms</span>
+                </div>
+                <div class="debug-row">
+                    <label>Velocidad Voz Base:</label>
+                    <input type="range" id="cfg-voiceRateBase" min="0.6" max="1.3" step="0.05" value="0.8">
+                    <span class="val" id="val-voiceRateBase">0.80x</span>
+                </div>
+                <div class="debug-row">
+                    <label>Modul. Vel x Cadencia:</label>
+                    <input type="range" id="cfg-voiceRateMod" min="0.00" max="0.15" step="0.01" value="0">
+                    <span class="val" id="val-voiceRateMod">0.00</span>
+                </div>
+            </div>
+
+            <!-- ATMÓSFERA SONORA: 3 CANALES INDEPENDIENTES Y MASTER -->
+            <div class="debug-group">
+                <div class="debug-group-title">ATMÓSFERA: REPOSO / CALMA / TORMENTA</div>
+                <div class="debug-row">
+                    <label>Vol Master Ambiente:</label>
+                    <input type="range" id="cfg-volAmbientMaster" min="0.1" max="2.5" step="0.05" value="0.6">
+                    <span class="val" id="val-volAmbientMaster">0.60</span>
+                </div>
+                <div class="debug-row">
+                    <label>Vol Reposo (Llovizna):</label>
+                    <input type="range" id="cfg-volReposo" min="0.0" max="1.2" step="0.02" value="0.48">
+                    <span class="val" id="val-volReposo">0.48</span>
+                </div>
+                <div class="debug-row">
+                    <label>Filtro Reposo (Hz):</label>
+                    <input type="range" id="cfg-freqReposo" min="40" max="800" step="10" value="90">
+                    <span class="val" id="val-freqReposo">90Hz</span>
+                </div>
+                <div class="debug-row">
+                    <label>Vol Calma (Enlace):</label>
+                    <input type="range" id="cfg-volCalma" min="0.0" max="1.2" step="0.02" value="0.22">
+                    <span class="val" id="val-volCalma">0.22</span>
+                </div>
+                <div class="debug-row">
+                    <label>Filtro Calma (Hz):</label>
+                    <input type="range" id="cfg-freqCalma" min="300" max="2000" step="25" value="1025">
+                    <span class="val" id="val-freqCalma">1025Hz</span>
+                </div>
+                <div class="debug-row">
+                    <label>Vol Tormenta (Max):</label>
+                    <input type="range" id="cfg-volTormenta" min="0.0" max="1.5" step="0.02" value="0.88">
+                    <span class="val" id="val-volTormenta">0.88</span>
+                </div>
+                <div class="debug-row">
+                    <label>Filtro Tormenta (Hz):</label>
+                    <input type="range" id="cfg-freqTormenta" min="1000" max="6000" step="100" value="3200">
+                    <span class="val" id="val-freqTormenta">3200Hz</span>
+                </div>
+                <div class="debug-row">
+                    <label>Vol Acúfeno (Tinnitus):</label>
+                    <input type="range" id="cfg-volTinnitus" min="0.0" max="2.0" step="0.05" value="1.35">
+                    <span class="val" id="val-volTinnitus">1.35</span>
+                </div>
+            </div>
+
+            <!-- CADENCIA Y PARÁLISIS POR SOBRECARGA -->
+            <div class="debug-group">
+                <div class="debug-group-title">DINÁMICA DE CADENCIA & SOBRECARGA</div>
+                <div class="debug-row">
+                    <label>Umbral Sobrecarga (Hz):</label>
+                    <input type="range" id="cfg-cadenceOverload" min="1.5" max="6.5" step="0.1" value="5">
+                    <span class="val" id="val-cadenceOverload">5.0Hz</span>
+                </div>
+                <div class="debug-row">
+                    <label>Tasa Estrés (+/s en max):</label>
+                    <input type="range" id="cfg-stressRateUp" min="0.1" max="2.5" step="0.05" value="1.5">
+                    <span class="val" id="val-stressRateUp">1.50</span>
+                </div>
+                <div class="debug-row">
+                    <label>Tasa Recuperac. (-/s):</label>
+                    <input type="range" id="cfg-stressRateDown" min="0.02" max="0.8" step="0.01" value="0.11">
+                    <span class="val" id="val-stressRateDown">0.11</span>
+                </div>
+                <div class="debug-row">
+                    <label>Tiempo Parálisis (ms):</label>
+                    <input type="range" id="cfg-paralysisDurationMs" min="400" max="3000" step="100" value="1400">
+                    <span class="val" id="val-paralysisDurationMs">1400ms</span>
+                </div>
+            </div>
+
+            <!-- VISUALES Y SENSIBILIDAD -->
+            <div class="debug-group">
+                <div class="debug-group-title">VISUALES & SENSIBILIDAD</div>
+                <div class="debug-row">
+                    <label>Densidad Lluvia:</label>
+                    <input type="range" id="cfg-rainDensity" min="20" max="450" step="10" value="260">
+                    <span class="val" id="val-rainDensity">260</span>
+                </div>
+                <div class="debug-row">
+                    <label>Grosor Gotas Tormenta:</label>
+                    <input type="range" id="cfg-rainGirthStorm" min="1.0" max="8.0" step="0.5" value="4.0">
+                    <span class="val" id="val-rainGirthStorm">4.0px</span>
+                </div>
+                <div class="debug-row">
+                    <label>Largo Gotas Tormenta:</label>
+                    <input type="range" id="cfg-rainLengthMult" min="1.0" max="6.0" step="0.5" value="3.5">
+                    <span class="val" id="val-rainLengthMult">3.5x</span>
+                </div>
+                <div class="debug-row">
+                    <label>Ceguera Luz Tormenta:</label>
+                    <input type="range" id="cfg-stormGlareMax" min="0.0" max="0.85" step="0.05" value="0.45">
+                    <span class="val" id="val-stormGlareMax">0.45</span>
+                </div>
+                <div class="debug-row">
+                    <label>Vel. Crecimiento Hifas:</label>
+                    <input type="range" id="cfg-branchHarmonicSpeed" min="0.5" max="5.0" step="0.5" value="2.2">
+                    <span class="val" id="val-branchHarmonicSpeed">2.2px</span>
+                </div>
+                <div class="debug-row">
+                    <label>Desorden Tensión Hifas:</label>
+                    <input type="range" id="cfg-branchChaos" min="0.1" max="1.5" step="0.05" value="0.65">
+                    <span class="val" id="val-branchChaos">0.65</span>
+                </div>
+                <div class="debug-row">
+                    <label>Área Exclusión Texto:</label>
+                    <input type="range" id="cfg-branchExclusionRadius" min="100" max="450" step="20" value="240">
+                    <span class="val" id="val-branchExclusionRadius">240px</span>
+                </div>
+                <div class="debug-row">
+                    <label>Densidad Hifas Máx:</label>
+                    <input type="range" id="cfg-branchMaxActive" min="30" max="180" step="5" value="85">
+                    <span class="val" id="val-branchMaxActive">85</span>
+                </div>
+                <div class="debug-row">
+                    <label>Umbral Mov Cursor:</label>
+                    <input type="range" id="cfg-mouseThreshold" min="8" max="80" step="2" value="22">
+                    <span class="val" id="val-mouseThreshold">22px</span>
+                </div>
+                <div class="debug-row">
+                    <label>Ventana Palabras (2L):</label>
+                    <input type="range" id="cfg-windowSize" min="6" max="22" step="1" value="14">
+                    <span class="val" id="val-windowSize">14</span>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 6px; margin-top: 10px;">
+                <button id="btn-copy-config" style="flex: 1; padding: 7px; background: #0284c7; color: #fff; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">📋 Copiar JSON</button>
+                <button id="btn-paste-config" style="flex: 1; padding: 7px; background: #0f172a; color: #38bdf8; border: 1px solid #38bdf8; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">📥 Pegar JSON</button>
+            </div>
+        </div>
+    </div>
+    -->
+
+    <div id="start-overlay">
+        <h1>EN EL NIDO_250724</h1>
+        <p>
+            Cualquier interacción (tecla, clic, toque o movimiento) modula el flujo narrativo y la atmósfera sensorial.
+        </p>
+        <div class="prompt-btn">Comenzar</div>
+    </div>
+</div>
+
+<script src="timestamps.js"></script>
+<script>
+// ==========================================================
+// CONFIGURACIÓN GLOBAL REACTIVA (CALIBRABLE EN VIVO)
+// ==========================================================
+const CONFIG = {
+    // VOZ & SINCRONIZACIÓN EXACTA (HTMLMediaElement max: 1.0)
+    volVoiceMaster: 1.0,
+    fadeInTime: 0.02,
+    inactivityStopMs: 460,
+    voiceRateBase: 0.8,
+    voiceRateMod: 0,
+
+    // ATMÓSFERA SONORA: 3 CANALES INDEPENDIENTES Y MASTER
+    volAmbientMaster: 0.6,
+    volReposo: 0.48,
+    freqReposo: 90,
+    volCalma: 0.22,
+    freqCalma: 1025,
+    volTormenta: 0.88,
+    freqTormenta: 3200,
+    volTinnitus: 1.35,
+
+    // DINÁMICA DE CADENCIA & SOBRECARGA
+    cadenceOverload: 5,
+    stressRateUp: 1.5,
+    stressRateDown: 0.11,
+    paralysisDurationMs: 1400,
+
+    // SENSIBILIDAD & VISUALES
+    rainDensity: 260,
+    rainGirthStorm: 4.0,
+    rainLengthMult: 3.5,
+    stormGlareMax: 0.45,
+
+    branchHarmonicSpeed: 2.2,
+    branchChaos: 0.65,
+    branchExclusionRadius: 240,
+    branchMaxActive: 85,
+
+    mouseThreshold: 22,
+    windowSize: 14
+};
+
+// ==========================================
+// 1. MOTOR DE AUDIO (Web Audio API)
+// ==========================================
+class SoundScapeEngine {
+    constructor() {
+        this.ctx = null;
+        this.rainNoise = null;
+
+        // 3 Canales independientes con filtros y ganancias dedicadas
+        this.filterReposo = null;
+        this.gainReposo = null;
+
+        this.filterCalma = null;
+        this.gainCalma = null;
+
+        this.filterTormenta = null;
+        this.gainTormenta = null;
+
+        // Master de ambiente
+        this.masterAmbientGain = null;
+
+        // Tinnitus (acúfeno) y Sub-impacto
+        this.tinnitusOsc = null;
+        this.tinnitusGain = null;
+        this.subOsc = null;
+        this.subGain = null;
+
+        this.narrationAudio = new Audio('audio/en_el_nido_250724.mp3');
+        this.narrationAudio.preload = 'auto';
+        this.narrationAudio.volume = 0.0;
+
+        this.isVoicePlaying = false;
+        this.currentFadeAnim = null;
+        this.pendingPause = false;
+        this.targetWordEndTime = null;
+        this.initialized = false;
+    }
+
+    init() {
+        if (this.initialized) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContext();
+
+        // 4 segundos de ruido rosa con headroom real (0.42)
+        const bufferSize = this.ctx.sampleRate * 4;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            data[i] = (b0 + b1 + b2 + white * 0.5362) * 0.42;
+        }
+
+        this.rainNoise = this.ctx.createBufferSource();
+        this.rainNoise.buffer = noiseBuffer;
+        this.rainNoise.loop = true;
+
+        // Master Ambient Gain
+        this.masterAmbientGain = this.ctx.createGain();
+        this.masterAmbientGain.gain.setValueAtTime(CONFIG.volAmbientMaster, this.ctx.currentTime);
+        this.masterAmbientGain.connect(this.ctx.destination);
+
+        // 1. CANAL REPOSO (Quietud total / Llovizna íntima / Petricor)
+        this.filterReposo = this.ctx.createBiquadFilter();
+        this.filterReposo.type = 'lowpass';
+        this.filterReposo.frequency.setValueAtTime(CONFIG.freqReposo, this.ctx.currentTime);
+        this.gainReposo = this.ctx.createGain();
+        this.gainReposo.gain.setValueAtTime(CONFIG.volReposo, this.ctx.currentTime);
+        this.filterReposo.connect(this.gainReposo);
+        this.gainReposo.connect(this.masterAmbientGain);
+
+        // 2. CANAL CALMA (Intermedio / Enlace / Lluvia constante en armonía)
+        this.filterCalma = this.ctx.createBiquadFilter();
+        this.filterCalma.type = 'bandpass';
+        this.filterCalma.frequency.setValueAtTime(CONFIG.freqCalma, this.ctx.currentTime);
+        this.filterCalma.Q.setValueAtTime(0.7, this.ctx.currentTime);
+        this.gainCalma = this.ctx.createGain();
+        this.gainCalma.gain.setValueAtTime(0.0, this.ctx.currentTime);
+        this.filterCalma.connect(this.gainCalma);
+        this.gainCalma.connect(this.masterAmbientGain);
+
+        // 3. CANAL TORMENTA (Máxima intensidad / Vendaval agresivo con agudos y resonancia)
+        this.filterTormenta = this.ctx.createBiquadFilter();
+        this.filterTormenta.type = 'lowpass';
+        this.filterTormenta.frequency.setValueAtTime(CONFIG.freqTormenta, this.ctx.currentTime);
+        this.filterTormenta.Q.setValueAtTime(2.0, this.ctx.currentTime);
+        this.gainTormenta = this.ctx.createGain();
+        this.gainTormenta.gain.setValueAtTime(0.0, this.ctx.currentTime);
+        this.filterTormenta.connect(this.gainTormenta);
+        this.gainTormenta.connect(this.masterAmbientGain);
+
+        // Conectar el generador de ruido a los 3 filtros
+        this.rainNoise.connect(this.filterReposo);
+        this.rainNoise.connect(this.filterCalma);
+        this.rainNoise.connect(this.filterTormenta);
+        this.rainNoise.start();
+
+        // 4. ACÚFENO (Tinnitus)
+        this.tinnitusOsc = this.ctx.createOscillator();
+        this.tinnitusOsc.type = 'sine';
+        this.tinnitusOsc.frequency.setValueAtTime(4800, this.ctx.currentTime);
+        this.tinnitusGain = this.ctx.createGain();
+        this.tinnitusGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+        this.tinnitusOsc.connect(this.tinnitusGain);
+        this.tinnitusGain.connect(this.ctx.destination);
+        this.tinnitusOsc.start();
+
+        // 5. SUB-IMPACTO (Trueno y vibración somática)
+        this.subOsc = this.ctx.createOscillator();
+        this.subOsc.type = 'sine';
+        this.subOsc.frequency.setValueAtTime(50, this.ctx.currentTime);
+        this.subGain = this.ctx.createGain();
+        this.subGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+        this.subOsc.connect(this.subGain);
+        this.subGain.connect(this.ctx.destination);
+        this.subOsc.start();
+
+        this.initialized = true;
+    }
+
+    startNarration() {
+        if (!this.narrationAudio) return;
+        this.narrationAudio.play().then(() => {
+            this.fadeInVoice();
+        }).catch(() => {});
+    }
+
+    fadeVolumeTo(targetVol, durationSec, onComplete) {
+        if (this.currentFadeAnim) cancelAnimationFrame(this.currentFadeAnim);
+        const startVol = Math.max(0.0, Math.min(1.0, this.narrationAudio.volume));
+        const startTime = performance.now();
+        const durationMs = Math.max(10, durationSec * 1000);
+        const safeTargetVol = Math.max(0.0, Math.min(1.0, Math.min(CONFIG.volVoiceMaster, targetVol)));
+
+        const step = (now) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(1.0, elapsed / durationMs);
+            const currentVol = startVol + (safeTargetVol - startVol) * progress;
+            this.narrationAudio.volume = Math.max(0.0, Math.min(1.0, currentVol));
+
+            if (progress < 1.0) {
+                this.currentFadeAnim = requestAnimationFrame(step);
+            } else {
+                this.currentFadeAnim = null;
+                if (onComplete) onComplete();
+            }
+        };
+        this.currentFadeAnim = requestAnimationFrame(step);
+    }
+
+    fadeInVoice() {
+        this.pendingPause = false;
+        this.targetWordEndTime = null;
+        if (this.narrationAudio.paused) {
+            this.narrationAudio.play().catch(() => {});
+        }
+        this.isVoicePlaying = true;
+        this.fadeVolumeTo(Math.min(1.0, CONFIG.volVoiceMaster), CONFIG.fadeInTime);
+    }
+
+    requestStopAtWordEnd(wordEndTime) {
+        if (!this.isVoicePlaying || this.pendingPause) return;
+        this.pendingPause = true;
+        this.targetWordEndTime = wordEndTime;
+    }
+
+    checkWordBoundaryAndFade() {
+        if (!this.pendingPause || this.targetWordEndTime === null) return;
+        const curTime = this.narrationAudio.currentTime;
+
+        // Si ya llegó al final de la palabra en curso
+        if (curTime >= this.targetWordEndTime - 0.015) {
+            this.pendingPause = false;
+            this.isVoicePlaying = false;
+            if (this.currentFadeAnim) cancelAnimationFrame(this.currentFadeAnim);
+
+            // Pausar y anclar el tiempo exactamente al borde de inicio de la siguiente palabra
+            this.narrationAudio.pause();
+            this.narrationAudio.currentTime = this.targetWordEndTime;
+            this.narrationAudio.volume = 0.0;
+            this.targetWordEndTime = null;
+        }
+    }
+
+    syncNarration(cadenceHz, currentWordEndTime) {
+        if (cadenceHz < 0.25) {
+            this.requestStopAtWordEnd(currentWordEndTime);
+        } else {
+            this.fadeInVoice();
+            const rate = Math.min(1.4, Math.max(0.6, CONFIG.voiceRateBase + (cadenceHz * CONFIG.voiceRateMod)));
+            this.narrationAudio.playbackRate = rate;
+        }
+    }
+
+    updateGradation(cadenceHz, stressLevel) {
+        if (!this.initialized) return;
+        const now = this.ctx.currentTime;
+        const ramp = 0.12;
+
+        this.masterAmbientGain.gain.setTargetAtTime(CONFIG.volAmbientMaster, now, ramp);
+        this.filterReposo.frequency.setTargetAtTime(CONFIG.freqReposo, now, ramp);
+        this.filterCalma.frequency.setTargetAtTime(CONFIG.freqCalma, now, ramp);
+        this.filterTormenta.frequency.setTargetAtTime(CONFIG.freqTormenta, now, ramp);
+
+        let wReposo = 0, wCalma = 0, wTormenta = 0;
+
+        if (cadenceHz < 0.35 && stressLevel < 0.25) {
+            wReposo = 1.0;
+            wCalma = Math.max(0.0, cadenceHz / 0.35);
+            wTormenta = 0.0;
+        } else if (stressLevel < 0.50) {
+            const t = Math.min(1.0, Math.max(0.0, (cadenceHz - 0.35) / Math.max(0.1, CONFIG.cadenceOverload - 0.35)));
+            wReposo = Math.max(0.0, 1.0 - t * 1.5);
+            wCalma = 1.0;
+            wTormenta = stressLevel * 1.2;
+        } else {
+            const tStorm = Math.min(1.0, (stressLevel - 0.40) / 0.60);
+            wReposo = 0.0;
+            wCalma = Math.max(0.0, 1.0 - tStorm);
+            wTormenta = Math.min(1.0, 0.4 + tStorm * 0.6);
+        }
+
+        const targetReposo = CONFIG.volReposo * wReposo;
+        const targetCalma = CONFIG.volCalma * wCalma;
+        const targetTormenta = CONFIG.volTormenta * wTormenta;
+
+        this.gainReposo.gain.setTargetAtTime(targetReposo, now, ramp);
+        this.gainCalma.gain.setTargetAtTime(targetTormenta > 0 ? targetCalma * 0.5 : targetCalma, now, ramp);
+        this.gainTormenta.gain.setTargetAtTime(targetTormenta, now, ramp);
+    }
+
+    triggerLightning() {
+        if (!this.initialized) return;
+        const now = this.ctx.currentTime;
+        this.tinnitusOsc.frequency.setValueAtTime(5400, now);
+        this.tinnitusOsc.frequency.exponentialRampToValueAtTime(3900, now + 1.2);
+        this.tinnitusGain.gain.setValueAtTime(CONFIG.volTinnitus, now);
+        this.tinnitusGain.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+
+        this.subOsc.frequency.setValueAtTime(95, now);
+        this.subOsc.frequency.exponentialRampToValueAtTime(40, now + 0.8);
+        this.subGain.gain.setValueAtTime(0.55, now);
+        this.subGain.gain.exponentialRampToValueAtTime(0.01, now + 1.6);
+    }
+}
+
+// ==========================================
+// 2. MOTOR GRÁFICO (Canvas 2D Procedural)
+// ==========================================
+class GenerativeCanvas {
+    constructor(canvas) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.rainDrops = [];
+        this.hyphae = [];
+        this.stressLevel = 0.0;
+        this.cadenceHz = 0.0;
+        this.isParalyzed = false;
+        this.lightningBolts = [];
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.initRain();
+    }
+
+    resize() {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+    }
+
+    initRain() {
+        this.rainDrops = [];
+        for (let i = 0; i < CONFIG.rainDensity; i++) {
+            this.rainDrops.push({
+                x: Math.random() * this.width,
+                y: Math.random() * this.height,
+                len: Math.random() * 8 + 5,
+                vy: Math.random() * 2.5 + 2.0,
+                alpha: Math.random() * 0.25 + 0.10
+            });
+        }
+    }
+
+    syncRainDensity() {
+        const diff = CONFIG.rainDensity - this.rainDrops.length;
+        if (diff > 0) {
+            for (let i = 0; i < diff; i++) {
+                this.rainDrops.push({
+                    x: Math.random() * this.width,
+                    y: Math.random() * this.height,
+                    len: Math.random() * 8 + 5,
+                    vy: Math.random() * 2.5 + 2.0,
+                    alpha: Math.random() * 0.25 + 0.10
+                });
+            }
+        } else if (diff < 0) {
+            this.rainDrops.splice(0, Math.abs(diff));
+        }
+    }
+
+    addHyphaeSeed(x, y, angle) {
+        if (this.isParalyzed) return;
+
+        let originX = (typeof x === 'number') ? x : (Math.random() * this.width);
+        let originY = (typeof y === 'number') ? y : (Math.random() * this.height);
+
+        // Si la posición cae dentro del área de exclusión de texto central, empujar hacia afuera
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+        const rx = CONFIG.branchExclusionRadius * 1.35;
+        const ry = CONFIG.branchExclusionRadius * 0.65;
+        const distToCenter = Math.sqrt(Math.pow((originX - cx) / rx, 2) + Math.pow((originY - cy) / ry, 2));
+        if (distToCenter < 1.0) {
+            const pushAngle = Math.atan2(originY - cy, originX - cx);
+            originX = cx + Math.cos(pushAngle) * (rx + 25);
+            originY = cy + Math.sin(pushAngle) * (ry + 25);
+        }
+
+        const maxActive = CONFIG.branchMaxActive || 85;
+        if (this.hyphae.length >= maxActive) {
+            // Descartar la rama más antigua para permitir renovación constante
+            this.hyphae.shift();
+        }
+
+        // Si no se especifica ángulo, determinar según proximidad a los bordes para crecer hacia adentro
+        let initialAngle = angle;
+        if (typeof initialAngle !== 'number') {
+            if (originX < 80) initialAngle = (Math.random() - 0.5) * Math.PI * 0.8;
+            else if (originX > this.width - 80) initialAngle = Math.PI + (Math.random() - 0.5) * Math.PI * 0.8;
+            else if (originY < 80) initialAngle = Math.PI * 0.5 + (Math.random() - 0.5) * Math.PI * 0.8;
+            else if (originY > this.height - 80) initialAngle = -Math.PI * 0.5 + (Math.random() - 0.5) * Math.PI * 0.8;
+            else initialAngle = Math.random() * Math.PI * 2;
+        }
+
+        this.hyphae.push({
+            points: [{ x: originX, y: originY }],
+            angle: initialAngle,
+            length: 0,
+            maxLength: Math.random() * 220 + 110,
+            alpha: 0.85,
+            branchProb: 0.035,
+            generation: 0,
+            alive: true,
+            fading: false
+        });
+    }
+
+    spawnDistributedHypha() {
+        if (this.isParalyzed) return;
+        const mode = Math.random();
+        let sx, sy, angle;
+
+        if (mode < 0.60) {
+            // Nodos perimétricos: invaden desde los cuatro bordes hacia el interior
+            const edge = Math.floor(Math.random() * 4);
+            if (edge === 0) { // Superior
+                sx = Math.random() * this.width;
+                sy = Math.random() * 45;
+                angle = Math.PI * 0.5 + (Math.random() - 0.5) * 0.9;
+            } else if (edge === 1) { // Inferior
+                sx = Math.random() * this.width;
+                sy = this.height - Math.random() * 45;
+                angle = -Math.PI * 0.5 + (Math.random() - 0.5) * 0.9;
+            } else if (edge === 2) { // Izquierda
+                sx = Math.random() * 45;
+                sy = Math.random() * this.height;
+                angle = (Math.random() - 0.5) * 0.9;
+            } else { // Derecha
+                sx = this.width - Math.random() * 45;
+                sy = Math.random() * this.height;
+                angle = Math.PI + (Math.random() - 0.5) * 0.9;
+            }
+        } else {
+            // Nodos distribuidos en cuadrantes interiores
+            sx = Math.random() * this.width;
+            sy = Math.random() * this.height;
+            angle = Math.random() * Math.PI * 2;
+        }
+
+        this.addHyphaeSeed(sx, sy, angle);
+    }
+
+    killHyphae() {
+        // En sobrecarga, el micelio muere y se borra completamente
+        this.hyphae = [];
+    }
+
+    strikeLightning() {
+        const startX = Math.random() * this.width * 0.7 + this.width * 0.15;
+        const bolt = [];
+        let currX = startX;
+        let currY = 0;
+        while (currY < this.height) {
+            bolt.push({ x: currX, y: currY });
+            currX += (Math.random() - 0.5) * 45;
+            currY += Math.random() * 25 + 10;
+        }
+        this.lightningBolts.push({ points: bolt, life: 1.0 });
+    }
+
+    render(dt) {
+        // Fondo con rastro fosforescente
+        this.ctx.fillStyle = 'rgba(2, 7, 8, 0.24)';
+        this.ctx.fillRect(0, 0, this.width, this.height);
+
+        // 1. LLUVIA REACTIVA AL ESTRÉS Y LA CADENCIA (TORMENTA VISUAL)
+        const stormIntensity = Math.min(1.0, Math.max(0.0, (this.stressLevel - 0.18) / 0.75));
+        const speedMult = this.isParalyzed ? 0.06 : (1.0 + (this.stressLevel * 3.6) + (this.cadenceHz * 0.35));
+
+        // Dimensiones dinámicas de gotas (crecen en tamaño e iluminan sin añadir más gotas)
+        const currentGirth = 1.0 + (CONFIG.rainGirthStorm - 1.0) * stormIntensity;
+        const currentLenMult = 1.0 + (CONFIG.rainLengthMult - 1.0) * stormIntensity;
+
+        this.ctx.lineWidth = currentGirth;
+        for (let r of this.rainDrops) {
+            const alpha = r.alpha * (0.7 + this.stressLevel * 1.4);
+
+            if (this.isParalyzed) {
+                this.ctx.strokeStyle = `rgba(255, 80, 80, ${Math.min(1.0, alpha)})`;
+            } else if (stormIntensity > 0.40) {
+                // Luz blanca fosforescente brillante que satura la pantalla
+                const whiteT = (stormIntensity - 0.40) / 0.60;
+                const rVal = Math.floor(57 + (255 - 57) * whiteT);
+                const gVal = 255;
+                const bVal = Math.floor(20 + (250 - 20) * whiteT);
+                this.ctx.strokeStyle = `rgba(${rVal}, ${gVal}, ${bVal}, ${Math.min(1.0, alpha * 1.35)})`;
+            } else {
+                this.ctx.strokeStyle = `rgba(57, 255, 20, ${Math.min(0.9, alpha)})`;
+            }
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(r.x, r.y);
+            const dropLen = r.len * currentLenMult;
+            this.ctx.lineTo(r.x - (this.stressLevel * 2.8), r.y + dropLen);
+            this.ctx.stroke();
+
+            r.y += r.vy * speedMult;
+            if (r.y > this.height) {
+                r.y = -dropLen - 5;
+                r.x = Math.random() * this.width;
+            }
+        }
+
+        // 2. CEGUERA POR TORMENTA (DESLUMBRAMIENTO / VELO DE LUZ)
+        // En tormenta fuerte, la pantalla se inunda de luz para dificultar la lectura
+        if (stormIntensity > 0.25) {
+            const glareAlpha = ((stormIntensity - 0.25) / 0.75) * CONFIG.stormGlareMax;
+            this.ctx.fillStyle = `rgba(240, 255, 245, ${glareAlpha})`;
+            this.ctx.fillRect(0, 0, this.width, this.height);
+        }
+
+        // 3. RAMIFICACIONES (HIFAS / MICELIO FRACTAL CONTINUO)
+        // Coordenadas centrales para la zona de exclusión de lectura
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+        const rx = CONFIG.branchExclusionRadius * 1.35;
+        const ry = CONFIG.branchExclusionRadius * 0.65;
+        const maxActive = CONFIG.branchMaxActive || 85;
+
+        this.ctx.lineWidth = 1.2;
+        this.ctx.strokeStyle = this.isParalyzed ? '#ff4444' : (this.stressLevel > 0.6 ? '#a3ffd6' : '#6efac0');
+
+        for (let i = this.hyphae.length - 1; i >= 0; i--) {
+            const h = this.hyphae[i];
+
+            if (this.isParalyzed) continue;
+
+            if (h.alive) {
+                const last = h.points[h.points.length - 1];
+
+                // Patrón armónico fractal vs tensión caótica
+                if (this.stressLevel < 0.40) {
+                    // Cadencia armónica: suave curvatura fractal armónica
+                    h.angle += Math.sin(h.length * 0.08) * 0.12;
+                } else {
+                    // Tensión: se desordenan con jitter y espasmos pero NO mueren
+                    const jitter = (Math.random() - 0.5) * CONFIG.branchChaos * (1.0 + this.stressLevel * 2.0);
+                    h.angle += jitter;
+                }
+
+                // Desplazamiento
+                const step = CONFIG.branchHarmonicSpeed;
+                let nextX = last.x + Math.cos(h.angle) * step;
+                let nextY = last.y + Math.sin(h.angle) * step;
+
+                // Zona de exclusión: desviar suavemente hacia afuera si se acerca al texto central
+                const distToCenter = Math.sqrt(Math.pow((nextX - cx) / rx, 2) + Math.pow((nextY - cy) / ry, 2));
+                if (distToCenter < 1.0) {
+                    const angleAway = Math.atan2(nextY - cy, nextX - cx);
+                    // Curva para rodear el área de texto sin invadirla
+                    h.angle = angleAway + (Math.sin(h.length * 0.1) * 0.35);
+                    nextX = last.x + Math.cos(h.angle) * step;
+                    nextY = last.y + Math.sin(h.angle) * step;
+                }
+
+                // Mantener dentro del lienzo con rebote suave hacia el interior
+                if (nextX < 15) { h.angle = Math.PI - h.angle; nextX = 15; }
+                if (nextX > this.width - 15) { h.angle = Math.PI - h.angle; nextX = this.width - 15; }
+                if (nextY < 15) { h.angle = -h.angle; nextY = 15; }
+                if (nextY > this.height - 15) { h.angle = -h.angle; nextY = this.height - 15; }
+
+                h.points.push({ x: nextX, y: nextY });
+                h.length += step;
+
+                // Mantener longitud de trazo para rendimiento óptimo
+                if (h.points.length > 130) {
+                    h.points.shift();
+                }
+
+                // Bifurcación fractal armónica (se subdivide respetando generaciones)
+                if (Math.random() < h.branchProb && this.hyphae.length < maxActive && h.generation < 4) {
+                    const branchSign = Math.random() < 0.5 ? -1 : 1;
+                    const branchAngle = (this.stressLevel < 0.40) 
+                        ? (branchSign * 0.48) // ~27.5 grados (ángulo armónico)
+                        : (branchSign * (0.6 + Math.random() * 0.8)); // Ángulo quebrado por tensión
+
+                    this.hyphae.push({
+                        points: [{ x: nextX, y: nextY }],
+                        angle: h.angle + branchAngle,
+                        length: 0,
+                        maxLength: h.maxLength * 0.75,
+                        alpha: h.alpha * 0.85,
+                        branchProb: h.branchProb * 0.75,
+                        generation: h.generation + 1,
+                        alive: true,
+                        fading: false
+                    });
+                }
+
+                // Ciclo biológico continuo: al alcanzar longitud madura, la punta brota y la rama antigua envejece suavemente
+                if (h.length >= h.maxLength) {
+                    h.alive = false;
+                    h.fading = true;
+
+                    // La yema apical brota en una nueva extensión si el micelio tiene espacio
+                    if (this.hyphae.length < maxActive && Math.random() < 0.75) {
+                        const newAngle = h.angle + (Math.random() - 0.5) * 0.55;
+                        this.hyphae.push({
+                            points: [{ x: nextX, y: nextY }],
+                            angle: newAngle,
+                            length: 0,
+                            maxLength: Math.random() * 200 + 100,
+                            alpha: 0.82,
+                            branchProb: 0.035,
+                            generation: 0, // se renueva para permitir continuidad fractal indefinida
+                            alive: true,
+                            fading: false
+                        });
+                    }
+                }
+            } else if (h.fading) {
+                // Desvanecimiento orgánico suave de ramas consolidadas
+                h.alpha -= 0.0035;
+                if (h.alpha <= 0.05) {
+                    this.hyphae.splice(i, 1);
+                    continue;
+                }
+            }
+
+            // Dibujar la hifa
+            this.ctx.globalAlpha = Math.max(0, h.alpha * (this.isParalyzed ? 0.2 : 0.75));
+            this.ctx.beginPath();
+            this.ctx.moveTo(h.points[0].x, h.points[0].y);
+            for (let pt of h.points) {
+                this.ctx.lineTo(pt.x, pt.y);
+            }
+            this.ctx.stroke();
+        }
+
+        // 4. RAYOS DE SOBRECARGA / CRISIS SENSORIAL
+        for (let b = this.lightningBolts.length - 1; b >= 0; b--) {
+            const bolt = this.lightningBolts[b];
+            this.ctx.strokeStyle = `rgba(255, 255, 255, ${bolt.life})`;
+            this.ctx.lineWidth = 3.0;
+            this.ctx.beginPath();
+            this.ctx.moveTo(bolt.points[0].x, bolt.points[0].y);
+            for (let pt of bolt.points) {
+                this.ctx.lineTo(pt.x, pt.y);
+            }
+            this.ctx.stroke();
+
+            bolt.life -= 0.12;
+            if (bolt.life <= 0) {
+                this.lightningBolts.splice(b, 1);
+            }
+        }
+
+        this.ctx.globalAlpha = 1.0;
+    }
+}
+
+// ==========================================
+// 3. ORQUESTADOR Y SINCRONIZACIÓN EXACTA
+// ==========================================
+class NidoExperience {
+    constructor() {
+        this.sound = new SoundScapeEngine();
+        this.canvas = new GenerativeCanvas(document.getElementById('matrix'));
+        this.activeWindow = document.getElementById('active-window');
+        this.flash = document.getElementById('flash-overlay');
+        this.startOverlay = document.getElementById('start-overlay');
+        this.cadenceFill = document.getElementById('cadence-fill');
+        this.cadenceVal = document.getElementById('cadence-val');
+        this.statePill = document.getElementById('state-pill');
+
+        this.timestamps = [];
+        this.totalWords = 0;
+        this.currentWordIndex = 0;
+
+        this.lastInteractionTime = performance.now();
+        this.lastFrameTime = performance.now();
+        this.cadenceHz = 0.0;
+        this.targetCadenceHz = 0.0;
+        this.stressLevel = 0.0;
+        this.active = false;
+        this.isParalyzed = false;
+
+        this.lastMousePos = { x: 0, y: 0 };
+        this.accumulatedDist = 0;
+
+        this.loadTimestamps();
+        this.setupEvents();
+        this.initDebugUI();
+    }
+
+    loadTimestamps() {
+        if (typeof WORD_TIMESTAMPS !== 'undefined' && Array.isArray(WORD_TIMESTAMPS)) {
+            this.timestamps = WORD_TIMESTAMPS;
+            this.totalWords = this.timestamps.length;
+            this.renderWordWindow(0);
+        } else {
+            console.warn("WORD_TIMESTAMPS no disponible.");
+        }
+    }
+
+    initDebugUI() {
+        const toggleBtn = document.getElementById('debug-header');
+        const panel = document.getElementById('debug-panel');
+        const arrow = document.getElementById('debug-toggle-btn');
+        if (!panel || !toggleBtn) return; // Panel de depuración comentado para pruebas de usuario
+
+        toggleBtn.addEventListener('click', () => {
+            panel.classList.toggle('collapsed');
+            arrow.innerText = panel.classList.contains('collapsed') ? '▲' : '▼';
+        });
+
+        const sliderDefs = [
+            { id: 'cfg-volVoiceMaster', key: 'volVoiceMaster', valId: 'val-volVoiceMaster', suffix: '' },
+            { id: 'cfg-fadeIn', key: 'fadeInTime', valId: 'val-fadeIn', suffix: 's' },
+            { id: 'cfg-inactivityStop', key: 'inactivityStopMs', valId: 'val-inactivityStop', suffix: 'ms' },
+            { id: 'cfg-voiceRateBase', key: 'voiceRateBase', valId: 'val-voiceRateBase', suffix: 'x' },
+            { id: 'cfg-voiceRateMod', key: 'voiceRateMod', valId: 'val-voiceRateMod', suffix: '' },
+            { id: 'cfg-volAmbientMaster', key: 'volAmbientMaster', valId: 'val-volAmbientMaster', suffix: '' },
+            { id: 'cfg-volReposo', key: 'volReposo', valId: 'val-volReposo', suffix: '' },
+            { id: 'cfg-freqReposo', key: 'freqReposo', valId: 'val-freqReposo', suffix: 'Hz' },
+            { id: 'cfg-volCalma', key: 'volCalma', valId: 'val-volCalma', suffix: '' },
+            { id: 'cfg-freqCalma', key: 'freqCalma', valId: 'val-freqCalma', suffix: 'Hz' },
+            { id: 'cfg-volTormenta', key: 'volTormenta', valId: 'val-volTormenta', suffix: '' },
+            { id: 'cfg-freqTormenta', key: 'freqTormenta', valId: 'val-freqTormenta', suffix: 'Hz' },
+            { id: 'cfg-volTinnitus', key: 'volTinnitus', valId: 'val-volTinnitus', suffix: '' },
+            { id: 'cfg-cadenceOverload', key: 'cadenceOverload', valId: 'val-cadenceOverload', suffix: 'Hz' },
+            { id: 'cfg-stressRateUp', key: 'stressRateUp', valId: 'val-stressRateUp', suffix: '' },
+            { id: 'cfg-stressRateDown', key: 'stressRateDown', valId: 'val-stressRateDown', suffix: '' },
+            { id: 'cfg-paralysisDurationMs', key: 'paralysisDurationMs', valId: 'val-paralysisDurationMs', suffix: 'ms' },
+            { id: 'cfg-rainDensity', key: 'rainDensity', valId: 'val-rainDensity', suffix: '' },
+            { id: 'cfg-rainGirthStorm', key: 'rainGirthStorm', valId: 'val-rainGirthStorm', suffix: 'px' },
+            { id: 'cfg-rainLengthMult', key: 'rainLengthMult', valId: 'val-rainLengthMult', suffix: 'x' },
+            { id: 'cfg-stormGlareMax', key: 'stormGlareMax', valId: 'val-stormGlareMax', suffix: '' },
+            { id: 'cfg-branchHarmonicSpeed', key: 'branchHarmonicSpeed', valId: 'val-branchHarmonicSpeed', suffix: 'px' },
+            { id: 'cfg-branchChaos', key: 'branchChaos', valId: 'val-branchChaos', suffix: '' },
+            { id: 'cfg-branchExclusionRadius', key: 'branchExclusionRadius', valId: 'val-branchExclusionRadius', suffix: 'px' },
+            { id: 'cfg-branchMaxActive', key: 'branchMaxActive', valId: 'val-branchMaxActive', suffix: '' },
+            { id: 'cfg-mouseThreshold', key: 'mouseThreshold', valId: 'val-mouseThreshold', suffix: 'px' },
+            { id: 'cfg-windowSize', key: 'windowSize', valId: 'val-windowSize', suffix: '' }
+        ];
+
+        const bindSlider = (def) => {
+            const input = document.getElementById(def.id);
+            const valSpan = document.getElementById(def.valId);
+            if (!input || !valSpan) return;
+            input.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value);
+                if (def.key === 'volVoiceMaster') val = Math.max(0.0, Math.min(1.0, val));
+                CONFIG[def.key] = val;
+                valSpan.innerText = `${val}${def.suffix}`;
+                if (def.key === 'rainDensity') {
+                    this.canvas.syncRainDensity();
+                }
+            });
+        };
+
+        sliderDefs.forEach(bindSlider);
+
+        const applyConfig = (newCfg) => {
+            sliderDefs.forEach(def => {
+                if (newCfg[def.key] !== undefined) {
+                    let v = Number(newCfg[def.key]);
+                    if (def.key === 'volVoiceMaster') v = Math.max(0.0, Math.min(1.0, v));
+                    CONFIG[def.key] = v;
+                    const el = document.getElementById(def.id);
+                    const sp = document.getElementById(def.valId);
+                    if (el) el.value = v;
+                    if (sp) sp.innerText = `${v}${def.suffix}`;
+                }
+            });
+            if (newCfg.rainDensity !== undefined) {
+                this.canvas.syncRainDensity();
+            }
+        };
+
+        document.getElementById('btn-copy-config').addEventListener('click', () => {
+            const jsonStr = JSON.stringify(CONFIG, null, 2);
+            navigator.clipboard.writeText(jsonStr).then(() => {
+                const btn = document.getElementById('btn-copy-config');
+                const orig = btn.innerText;
+                btn.innerText = '¡COPIADO!';
+                setTimeout(() => btn.innerText = orig, 1800);
+            }).catch(() => {
+                prompt("Copia tu configuración JSON:", jsonStr);
+            });
+        });
+
+        const pasteBtn = document.getElementById('btn-paste-config');
+        if (pasteBtn) {
+            const handlePasteText = (txt) => {
+                try {
+                    const parsed = JSON.parse(txt);
+                    applyConfig(parsed);
+                    const orig = pasteBtn.innerText;
+                    pasteBtn.innerText = '¡CONFIG CARGADA!';
+                    setTimeout(() => pasteBtn.innerText = orig, 1800);
+                } catch (err) {
+                    alert("Error al leer el JSON: " + err.message);
+                }
+            };
+
+            pasteBtn.addEventListener('click', () => {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    navigator.clipboard.readText().then(text => {
+                        if (text && text.trim().startsWith('{')) {
+                            handlePasteText(text);
+                        } else {
+                            const input = prompt("Pega aquí el JSON de configuración:", "");
+                            if (input) handlePasteText(input);
+                        }
+                    }).catch(() => {
+                        const input = prompt("Pega aquí el JSON de configuración:", "");
+                        if (input) handlePasteText(input);
+                    });
+                } else {
+                    const input = prompt("Pega aquí el JSON de configuración:", "");
+                    if (input) handlePasteText(input);
+                }
+            });
+        }
+    }
+
+    start() {
+        this.sound.init();
+        this.startOverlay.style.opacity = '0';
+        setTimeout(() => this.startOverlay.style.display = 'none', 600);
+        this.active = true;
+        this.sound.startNarration();
+        this.lastFrameTime = performance.now();
+        this.lastInteractionTime = performance.now();
+        this.loop();
+    }
+
+    setupEvents() {
+        this.startOverlay.addEventListener('click', () => this.start());
+
+        window.addEventListener('keydown', () => {
+            if (!this.active || this.isParalyzed) return;
+            this.registerInteraction(1.0);
+        });
+
+        window.addEventListener('pointerdown', (e) => {
+            if (!this.active || this.isParalyzed) return;
+            if (e.target.closest('#debug-panel')) return;
+            this.registerInteraction(1.0, e.clientX, e.clientY);
+        });
+
+        window.addEventListener('wheel', (e) => {
+            if (!this.active || this.isParalyzed) return;
+            if (e.target.closest('#debug-panel')) return;
+            this.registerInteraction(0.55, e.clientX, e.clientY);
+        }, { passive: true });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!this.active || this.isParalyzed) return;
+            if (e.target.closest('#debug-panel')) return;
+
+            const dx = e.clientX - this.lastMousePos.x;
+            const dy = e.clientY - this.lastMousePos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            this.lastMousePos = { x: e.clientX, y: e.clientY };
+
+            this.accumulatedDist += dist;
+            if (this.accumulatedDist >= CONFIG.mouseThreshold) {
+                const pulses = Math.min(2.0, this.accumulatedDist / CONFIG.mouseThreshold);
+                this.accumulatedDist = 0;
+                this.registerInteraction(0.40 * pulses, e.clientX, e.clientY);
+            }
+        });
+    }
+
+    getCurrentWordEndTime() {
+        if (!this.timestamps || this.timestamps.length === 0) return 0;
+        const curTime = this.sound.narrationAudio.currentTime;
+        const curIdx = this.findWordIndexAtTime(curTime);
+        const cur = this.timestamps[curIdx];
+        return cur ? cur.end : 0;
+    }
+
+    triggerParalysis() {
+        this.isParalyzed = true;
+        this.canvas.isParalyzed = true;
+        this.statePill.innerText = "CRISIS SENSORIAL // PARÁLISIS";
+        this.statePill.style.borderColor = "#ff0000";
+        this.statePill.style.backgroundColor = "rgba(120, 0, 0, 0.75)";
+
+        this.flash.style.opacity = '1.0';
+        setTimeout(() => { this.flash.style.opacity = '0'; }, 120);
+
+        this.sound.triggerLightning();
+        this.canvas.strikeLightning();
+        this.canvas.killHyphae(); // Las ramificaciones mueren y se borran en sobrecarga
+
+        // Pausa temporal inmediata
+        this.sound.narrationAudio.pause();
+
+        setTimeout(() => {
+            this.isParalyzed = false;
+            this.canvas.isParalyzed = false;
+            this.stressLevel = 0.40; // Se disipa parcialmente el shock
+            this.cadenceHz = 0.0;
+            this.targetCadenceHz = 0.0;
+            this.lastInteractionTime = performance.now();
+            this.statePill.innerText = "RECUPERANDO ENLACE";
+            this.statePill.style.borderColor = "var(--phosphor-dim)";
+            this.statePill.style.backgroundColor = "rgba(4, 18, 20, 0.65)";
+        }, CONFIG.paralysisDurationMs);
+    }
+
+    registerInteraction(impulseWeight, posX, posY) {
+        if (this.isParalyzed) return;
+
+        const now = performance.now();
+        const deltaSec = (now - this.lastInteractionTime) / 1000;
+        this.lastInteractionTime = now;
+
+        // Estimar cadencia instantánea a partir del intervalo entre acciones
+        let instantHz = 1.0;
+        if (deltaSec > 0.02 && deltaSec < 3.0) {
+            instantHz = Math.min(6.5, (1.0 / deltaSec) * impulseWeight);
+        } else if (deltaSec <= 0.02) {
+            instantHz = 5.0 * impulseWeight;
+        }
+
+        // Suavizado hacia el nuevo impulso
+        this.targetCadenceHz = Math.min(6.0, this.targetCadenceHz * 0.4 + instantHz * 0.6);
+
+        // Despertar la voz de inmediato si estaba quieta
+        const wordEndTime = this.getCurrentWordEndTime();
+        this.sound.syncNarration(Math.max(0.6, this.targetCadenceHz), wordEndTime);
+
+        // A) Siembra local con ligera dispersión orgánica si se recibe posición (cursor o clic)
+        if (typeof posX === 'number' && typeof posY === 'number') {
+            this.canvas.addHyphaeSeed(
+                posX + (Math.random() - 0.5) * 50,
+                posY + (Math.random() - 0.5) * 50
+            );
+        }
+
+        // B) Siembra distribuida global (bordes y cuadrantes) para colonizar toda la pantalla
+        if (Math.random() < 0.70 || typeof posX !== 'number') {
+            this.canvas.spawnDistributedHypha();
+        }
+    }
+
+    findWordIndexAtTime(timeSec) {
+        if (!this.timestamps || this.timestamps.length === 0) return 0;
+        let low = 0;
+        let high = this.timestamps.length - 1;
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const item = this.timestamps[mid];
+            if (timeSec >= item.start && timeSec <= item.end) {
+                return mid;
+            } else if (timeSec < item.start) {
+                high = mid - 1;
+            } else {
+                low = mid + 1;
+            }
+        }
+        return Math.min(this.timestamps.length - 1, Math.max(0, low));
+    }
+
+    renderWordWindow(activeIdx) {
+        if (!this.timestamps || this.timestamps.length === 0) return;
+        this.currentWordIndex = activeIdx;
+        const half = Math.floor(CONFIG.windowSize / 2);
+        const start = Math.max(0, activeIdx - (half - 1));
+        const end = Math.min(this.totalWords, start + CONFIG.windowSize);
+
+        let html = '';
+        for (let i = start; i < end; i++) {
+            const item = this.timestamps[i];
+            const isCurrent = (i === activeIdx);
+            html += `<span class="word-token ${isCurrent ? 'current' : ''}">${item.word}</span> `;
+        }
+        this.activeWindow.innerHTML = html;
+    }
+
+    loop() {
+        const now = performance.now();
+        const dt = Math.min(0.08, Math.max(0.005, (now - this.lastFrameTime) / 1000));
+        this.lastFrameTime = now;
+
+        const timeSinceLastAction = now - this.lastInteractionTime;
+
+        if (!this.isParalyzed) {
+            if (timeSinceLastAction > CONFIG.inactivityStopMs) {
+                // Caída natural a reposo
+                this.targetCadenceHz = Math.max(0.0, this.targetCadenceHz - (dt * 4.0));
+                this.cadenceHz = Math.max(0.0, this.cadenceHz - (dt * 3.5));
+
+                const wordEndTime = this.getCurrentWordEndTime();
+                this.sound.syncNarration(0.0, wordEndTime);
+
+                // Disminución de estrés durante el reposo
+                this.stressLevel = Math.max(0.0, this.stressLevel - (CONFIG.stressRateDown * 1.5 * dt));
+
+                if (this.cadenceHz < 0.15 && this.stressLevel < 0.05) {
+                    this.statePill.innerText = "REPOSO (LLOVIZNA)";
+                    this.statePill.style.borderColor = "var(--phosphor-faint)";
+                    this.statePill.style.backgroundColor = "rgba(4, 18, 20, 0.65)";
+                }
+            } else {
+                // Acercar la cadencia real a la cadencia objetivo con amortiguación
+                this.cadenceHz += (this.targetCadenceHz - this.cadenceHz) * Math.min(1.0, dt * 6.0);
+
+                // Dinámica temporal continua de estrés
+                if (this.cadenceHz > CONFIG.cadenceOverload) {
+                    const excess = (this.cadenceHz - CONFIG.cadenceOverload) / CONFIG.cadenceOverload;
+                    const stressDelta = CONFIG.stressRateUp * (1 + excess * 0.4) * dt;
+                    this.stressLevel = Math.min(1.0, this.stressLevel + stressDelta);
+
+                    this.statePill.innerText = "TENSIÓN // SOBRECARGA";
+                    this.statePill.style.borderColor = "#ff4444";
+                    this.statePill.style.backgroundColor = "rgba(60, 10, 10, 0.65)";
+
+                    if (this.stressLevel >= 0.99) {
+                        this.triggerParalysis();
+                        requestAnimationFrame(() => this.loop());
+                        return;
+                    }
+                } else if (this.cadenceHz >= 0.35) {
+                    this.stressLevel = Math.max(0.0, this.stressLevel - (CONFIG.stressRateDown * dt));
+                    this.statePill.innerText = "ENLACE (CADENCIA ÓPTIMA)";
+                    this.statePill.style.borderColor = "var(--phosphor-green)";
+                    this.statePill.style.backgroundColor = "rgba(4, 18, 20, 0.65)";
+                } else {
+                    this.stressLevel = Math.max(0.0, this.stressLevel - (CONFIG.stressRateDown * dt));
+                }
+
+                const wordEndTime = this.getCurrentWordEndTime();
+                this.sound.syncNarration(this.cadenceHz, wordEndTime);
+            }
+
+            // Verificar si el audio en curso llegó al final de la palabra antes de pausar
+            this.sound.checkWordBoundaryAndFade();
+            this.sound.updateGradation(this.cadenceHz, this.stressLevel);
+
+            this.canvas.stressLevel = this.stressLevel;
+            this.canvas.cadenceHz = this.cadenceHz;
+
+            // Siembra ambiental / autónoma del micelio según la cadencia activa
+            if (this.cadenceHz > 0.20 && Math.random() < (0.04 * this.cadenceHz)) {
+                this.canvas.spawnDistributedHypha();
+            }
+
+            // Sincronización exacta en milisegundos con el audio real
+            if (this.sound.narrationAudio && this.timestamps.length > 0) {
+                const curTime = this.sound.narrationAudio.currentTime;
+                const activeIdx = this.findWordIndexAtTime(curTime);
+                if (activeIdx !== this.currentWordIndex) {
+                    this.renderWordWindow(activeIdx);
+                }
+            }
+        }
+
+        this.canvas.render(dt);
+
+        // Barra de telemetría e indicadores
+        this.cadenceVal.innerText = `${this.cadenceHz.toFixed(1)} Hz | Estrés: ${(this.stressLevel * 100).toFixed(0)}%`;
+        const fillPercent = Math.min(100, (this.cadenceHz / (CONFIG.cadenceOverload * 1.2)) * 100);
+        this.cadenceFill.style.width = `${fillPercent}%`;
+        if (this.isParalyzed) {
+            this.cadenceFill.style.backgroundColor = '#ff0000';
+        } else if (this.stressLevel > 0.65) {
+            this.cadenceFill.style.backgroundColor = '#ff4444';
+        } else if (this.cadenceHz > CONFIG.cadenceOverload) {
+            this.cadenceFill.style.backgroundColor = '#ffaa00';
+        } else {
+            this.cadenceFill.style.backgroundColor = 'var(--phosphor-green)';
+        }
+
+        requestAnimationFrame(() => this.loop());
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    new NidoExperience();
+});
+</script>
+</body>
+</html>
