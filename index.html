@@ -266,6 +266,7 @@
            INTERFAZ DE DEBUG
            ========================================================== */
         #debug-panel {
+            display: none !important; /* Oculto para pruebas con usuarios reales */
             position: fixed;
             bottom: 3.8rem;
             left: 1.5rem;
@@ -277,7 +278,6 @@
             border-radius: 3px;
             z-index: 100;
             font-size: 0.67rem;
-            display: flex;
             flex-direction: column;
             backdrop-filter: blur(8px);
             transition: transform 0.25s ease, opacity 0.25s ease;
@@ -404,10 +404,10 @@
     </footer>
 
     <!-- ==================================================================
-         PANEL DE DEBUG CALIBRABLE (COMENTADO PARA PRUEBAS CON USUARIOS)
-         Para reactivar la calibración, descomenta este bloque y el cierre al final.
-         ==================================================================
-    <div id="debug-panel">
+         PANEL DE DEBUG CALIBRABLE (OCULTO PARA PRUEBAS CON USUARIOS)
+         Para reactivar el panel, quita style="display: none !important;" o el display: none del CSS.
+         ================================================================== -->
+    <div id="debug-panel" style="display: none !important;">
         <div id="debug-header">
             <span>[ CALIBRACIÓN // EN EL NIDO ]</span>
             <span id="debug-toggle-btn">▼</span>
@@ -574,7 +574,6 @@
             </div>
         </div>
     </div>
-    -->
 
     <div id="start-overlay">
         <h1>EN EL NIDO_250724</h1>
